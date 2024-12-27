@@ -59,6 +59,7 @@ Jinja2==3.1.4
 jiter==0.5.0
 jsonpatch==1.33
 jsonpointer==3.0.0
+langchain_google_genai
 jsonschema==4.23.0
 jsonschema-specifications==2023.12.1
 jupyter_client==8.6.3
