@@ -1,176 +1,3 @@
-# import streamlit as st
-# import os
-# import dotenv
-# import uuid
-# import logging
-# from pathlib import Path
-
-# # Configure logging
-# logging.basicConfig(level=logging.INFO)
-# logger = logging.getLogger(__name__)
-
-# # SQLite configuration for Linux environments
-# if os.name == 'posix':
-#     __import__('pysqlite3')
-#     import sys
-#     sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
-
-# from langchain_google_genai import ChatGoogleGenerativeAI
-# from langchain.schema import HumanMessage, AIMessage
-# from langchain_community.vectorstores import Chroma
-# from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-# from test4 import (
-#     load_doc_to_db,
-#     stream_llm_response,
-#     stream_llm_rag_response,
-#     initialize_vector_db,
-# )
-
-# dotenv.load_dotenv()
-
-# # Page configuration
-# st.set_page_config(
-#     page_title="RAG-Enhanced Chat",
-#     page_icon="📚",
-#     layout="centered",
-#     initial_sidebar_state="expanded"
-# )
-
-# # Header
-# st.header("RAG-Enhanced Chat Application")
-# st.subheader("Upload documents or URLs to enhance the conversation with relevant context")
-
-# # Initialize session state
-# if "session_id" not in st.session_state:
-#     st.session_state.session_id = str(uuid.uuid4())
-#     logger.info(f"New session started: {st.session_state.session_id}")
-
-# if "rag_sources" not in st.session_state:
-#     st.session_state.rag_sources = []
-
-# if "messages" not in st.session_state:
-#     st.session_state.messages = [
-#         {"role": "assistant", "content": "Hello! I'm ready to help. You can upload documents or provide URLs to enhance our conversation with relevant context."}
-#     ]
-
-# # Initialize vector database if not already loaded
-# chroma_db_path = os.path.join(os.getcwd(), "chroma_db")
-# if os.path.exists(chroma_db_path) and any(Path(chroma_db_path).iterdir()):
-#     vector_db = Chroma(
-#         persist_directory=chroma_db_path,
-#         embedding_function=GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-#     )
-#     print("Already set")
-#     st.session_state.vector_db = vector_db
-# else:
-#     st.session_state.vector_db = None
-#     st.warning("Please upload documents or provide URLs to enable context-aware responses.")
-
-# # Sidebar configuration
-# with st.sidebar:
-#     # API Key Management
-#     if "GOOGLE_API_KEY" not in os.environ:
-#         with st.popover("🔐 API Key Configuration"):
-#             google_api_key = st.text_input(
-#                 "Enter your Google API Key",
-#                 value=os.getenv("GOOGLE_API_KEY", ""),
-#                 type="password",
-#                 key="google_api_key",
-#             )
-#             if not google_api_key:
-#                 st.warning("Please enter your Google API Key to continue")
-#     else:
-#         google_api_key = os.environ["GOOGLE_API_KEY"]
-
-#     st.divider()
-
-#     if st.button("Clear Chat", type="primary"):
-#         st.session_state.messages = [st.session_state.messages[0]]
-#         st.rerun()
-
-#     # Document Upload Section
-#     st.header("Knowledge Base")
-
-#     # File upload
-#     uploaded_files = st.file_uploader(
-#         "📄 Upload Documents",
-#         type=["pdf", "txt", "docx", "md"],
-#         accept_multiple_files=True,
-#         help="Supported formats: PDF, TXT, DOCX, MD",
-#         key="rag_docs",
-#         on_change=load_doc_to_db
-#     )
-
-#     # Show loaded sources with additional information
-
-#     with st.expander(f"📚 Knowledge Base Sources ({len(st.session_state.rag_sources)})"):
-#         if st.session_state.vector_db is not None:
-#             if st.session_state.get("collections"):
-#                 for doc_name, info in st.session_state.collections.items():
-#                     col1, col2 = st.columns([3, 1])
-#                     with col1:
-#                         st.write(f"📄 {doc_name}")
-#                     with col2:
-#                         if st.button("🗑️", key=f"delete_{doc_name}", help=f"Delete {doc_name}"):
-#                             try:
-#                                 st.session_state.vector_db._client.delete_collection(name=info["collection_name"])
-#                                 del st.session_state.collections[doc_name]
-#                                 st.session_state.rag_sources.remove(doc_name)
-#                                 st.experimental_rerun()
-#                             except Exception as e:
-#                                 st.error(f"Error deleting collection: {e}")
-#             else:
-#                 st.write("No sources loaded yet")
-
-# # Main chat interface
-# if not google_api_key and "GOOGLE_API_KEY" not in os.environ:
-#     st.warning("⚠️ Please configure your API key in the sidebar to continue")
-# else:
-#     try:
-#         llm_stream = ChatGoogleGenerativeAI(
-#             model="gemini-1.5-pro",
-#             temperature=0.4,
-#             streaming=True,
-#             google_api_key=google_api_key,
-#         )
-
-#         # Display chat messages
-#         for message in st.session_state.messages:
-#             with st.chat_message(message["role"]):
-#                 st.markdown(message["content"])
-
-#         # Chat input
-#         if prompt := st.chat_input("Type your message here..."):
-#             st.session_state.messages.append({"role": "user", "content": prompt})
-#             with st.chat_message("user"):
-#                 st.markdown(prompt)
-
-#             # Generate response
-#             with st.chat_message("assistant"):
-#                 messages = [
-#                     HumanMessage(content=m["content"]) if m["role"] == "user"
-#                     else AIMessage(content=m["content"])
-#                     for m in st.session_state.messages
-#                 ]
-
-#                 if st.session_state.vector_db is None:
-#                     st.write_stream(stream_llm_response(llm_stream, messages))
-#                 else:
-#                     st.write_stream(stream_llm_rag_response(llm_stream, messages))
-
-#     except Exception as e:
-#         logger.error(f"Error in main chat interface: {e}")
-#         st.error(f"An error occurred: {str(e)}")
-
-# # Footer
-# with st.sidebar:
-#     st.divider()
-#     st.markdown("""
-#     ### About
-#     This application combines the power of LLMs with RAG (Retrieval Augmented Generation) 
-#     to provide context-aware responses based on your documents and web content.
-#     """)
 #app.py
 import streamlit as st
 import os
@@ -232,6 +59,20 @@ def initialize_session_state():
         st.session_state.show_login = False
     if "is_admin" not in st.session_state:
         st.session_state.is_admin = False
+    if st.session_state.vector_db:
+    # Fetch all documents from Chroma
+        documents = st.session_state.vector_db._collection.get(include=["metadatas"])
+        
+        # Extract unique keys for each metadata entry
+        st.session_state.rag_sources = [
+            meta.get("title", meta.get("url", str(index))) for index, meta in enumerate(documents["metadatas"])
+        ]
+        
+        # Store metadata using the same keys
+        st.session_state.documents_metadata = {
+            source_key: meta for source_key, meta in zip(st.session_state.rag_sources, documents["metadatas"])
+        }
+
 
 def check_admin_auth():
     """Authenticate admin users."""
@@ -374,26 +215,45 @@ def handle_document_upload(uploaded_files):
 def display_knowledge_base():
     """Display the knowledge base with enhanced metadata."""
     with st.expander("📚 Knowledge Base"):
-        for source in st.session_state.rag_sources:
-            metadata = st.session_state.documents_metadata.get(source, {})
-            source_title = metadata.get('title', source)
-            if metadata.get('filename'):
-                source_title = metadata.get('filename')
-                
-            st.markdown(f"### {source_title}")
-            st.write(f"Source Type: {metadata.get('source_type', 'Unknown')}")
-            st.write(f"Industry: {metadata.get('industry', 'Not specified')}")
-            st.write(f"Category: {metadata.get('category', 'Not specified')}")
-            st.write(f"Description: {metadata.get('description', 'No description provided')}")
-            st.write(f"Uploaded: {metadata.get('upload_date', 'Unknown')}")
-            
-            if metadata.get('url'):
-                st.write(f"URL: {metadata.get('url')}")
+        if "rag_sources" not in st.session_state or "documents_metadata" not in st.session_state:
+            st.write("No knowledge base found.")
+            return
 
-            if st.button("Delete", key=f"del_{source}"):
-                st.session_state.rag_sources.remove(source)
-                del st.session_state.documents_metadata[source]
-                st.rerun()
+        for index, source_key in enumerate(st.session_state.rag_sources):
+            # Safely retrieve metadata for the source
+            metadata = st.session_state.documents_metadata.get(source_key, {})
+            
+            # Extract metadata details with fallback defaults
+            source_title = metadata.get('filename', metadata.get('title', source_key))
+            source_type = metadata.get('source_type', 'Unknown')
+            industry = metadata.get('industry', 'Not specified')
+            category = metadata.get('category', 'Not specified')
+            description = metadata.get('description', 'No description provided')
+            upload_date = metadata.get('upload_date', 'Unknown')
+            url = metadata.get('url')
+
+            # Display metadata
+            st.markdown(f"### {source_title}")
+            st.write(f"Source Type: {source_type}")
+            st.write(f"Industry: {industry}")
+            st.write(f"Category: {category}")
+            st.write(f"Description: {description}")
+            st.write(f"Uploaded: {upload_date}")
+
+            if url:
+                st.write(f"URL: {url}")
+
+            # Add delete button for each source with a unique key
+            if st.button("Delete", key=f"del_{source_key}_{index}"):
+                try:
+                    st.session_state.rag_sources.pop(index)  # Remove by index to avoid mismatches
+                    st.session_state.documents_metadata.pop(source_key, None)
+                    st.rerun()  # Refresh the Streamlit app
+                except Exception as e:
+                    st.error(f"Error deleting source: {e}")
+
+
+
 
 def handle_chat():
     """Handle chat interaction."""
@@ -426,7 +286,7 @@ def handle_chat():
 
 def main():
     """Main function to run the Streamlit app."""
-    st.set_page_config(page_title="Investment Assistant", page_icon="📚", layout="centered")
+    st.set_page_config(page_title="RAG-Enhanced Chat", page_icon="📚", layout="centered")
     initialize_session_state()
 
     col1, col2 = st.columns([6, 1])
