@@ -426,12 +426,12 @@ def handle_chat():
 
 def main():
     """Main function to run the Streamlit app."""
-    st.set_page_config(page_title="RAG-Enhanced Chat", page_icon="📚", layout="centered")
+    st.set_page_config(page_title="Investment Assistant", page_icon="📚", layout="centered")
     initialize_session_state()
 
     col1, col2 = st.columns([6, 1])
     with col1:
-        st.header("RAG-Enhanced Chat Application")
+        st.header("Ultimate Investiment Assistant")
     with col2:
         if st.button("Admin"):
             st.session_state.show_login = True
